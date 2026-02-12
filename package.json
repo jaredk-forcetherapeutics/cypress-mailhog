@@ -1,7 +1,7 @@
 {
   "name": "cypress-mailhog",
-  "version": "2.6.0",
-  "description": "Cypress Commands for MailHog 🌳🐗 - forked from https://github.com/SMenigat/cypress-mailhog",
+  "version": "2.5.0",
+  "description": "Cypress Commands for MailHog 🌳🐗",
   "main": "index.js",
   "types": "types/index.d.ts",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jaredk-forcetherapeutics/cypress-mailhog.git"
+    "url": "git+https://github.com/SMenigat/cypress-mailhog.git"
   },
   "keywords": [
     "JavaScript",
@@ -17,12 +17,12 @@
     "Cypress.io",
     "MailHog"
   ],
-  "author": "Jared Kaneshiro <jared@forcetherapeutics.com>",
+  "author": "Samuel Menigat <samuel.menigat@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jaredk-forcetherapeutics/cypress-mailhog/issues"
+    "url": "https://github.com/SMenigat/cypress-mailhog/issues"
   },
-  "homepage": "https://github.com/jaredk-forcetherapeutics/cypress-mailhog#readme",
+  "homepage": "https://github.com/SMenigat/cypress-mailhog#readme",
   "devDependencies": {
     "cypress": "15.10.0",
     "eslint": "^10.0.0",
