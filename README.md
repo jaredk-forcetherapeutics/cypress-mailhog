@@ -31,7 +31,7 @@ Add the base url of your MailHog installation in the `e2e` block of your `cypres
 ```typescript
 export default defineConfig({
   projectId: "****",
-  env: {
+  expose: {
     mailHogUrl: "http://localhost:8090/",
   },
 });
@@ -41,22 +41,26 @@ export default defineConfig({
 
 If your MailHog instance uses authentication, add `mailHogAuth` to your cypress `env` config:
 
-```json
-{
-  ...
-  "mailHogAuth": {"user": "mailhog username", "pass": "mailhog password"}
-}
+```typescript
+export default defineConfig({
+  env: {
+    mailHogAuth: { user: "mailhog username", pass: "mailhog password" },
+  },
+});
 ```
 
-or add `mailHogUsername` and `mailHogPassword` in cypress env config
+or add `mailHogUsername` and `mailHogPassword` in cypress env config:
 
-```json
-{
-  ...
-  "mailHogUsername": "mailhog username",
-  "mailHogPassword": "mailhog password"
-}
+```typescript
+export default defineConfig({
+  env: {
+    mailHogUsername: "mailhog username",
+    mailHogPassword: "mailhog password",
+  },
+});
 ```
+
+**Note:** This package uses the new `cy.env()` API (introduced in Cypress 15.10.0) to securely access authentication credentials. The deprecated `Cypress.env()` API is no longer used.
 
 ## Commands
 

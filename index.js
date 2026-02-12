@@ -1,38 +1,54 @@
 const mhApiUrl = (path) => {
-  const envValue = Cypress.env("mailHogUrl");
-  const basePath = envValue ? envValue : Cypress.config("mailHogUrl");
+  const envValue = Cypress.expose("mailHogUrl");
+  const basePath = envValue || Cypress.config("mailHogUrl");
   return new URL(`api${path}`, basePath).href;
 };
 
-let mhAuth = Cypress.env("mailHogAuth") || "";
-if (Cypress.env("mailHogUsername") && Cypress.env("mailHogPassword")) {
-  mhAuth = {
-    user: Cypress.env("mailHogUsername"),
-    pass: Cypress.env("mailHogPassword"),
-  };
-}
+/**
+ * Helper function to retrieve MailHog authentication credentials.
+ * Uses cy.env() to securely access environment variables.
+ * @returns {Cypress.Chainable} A Cypress chain yielding the auth configuration.
+ */
+const getMailHogAuth = () => {
+  return cy
+    .env(["mailHogAuth", "mailHogUsername", "mailHogPassword"])
+    .then(({ mailHogAuth, mailHogUsername, mailHogPassword }) => {
+      if (mailHogAuth) {
+        return mailHogAuth;
+      }
+      if (mailHogUsername && mailHogPassword) {
+        return {
+          user: mailHogUsername,
+          pass: mailHogPassword,
+        };
+      }
+      return "";
+    });
+};
 
 /**
  * Gets unfiltered emails from mailhog.
- * @param {number} limit The maximum number of emails to get. 
+ * @param {number} limit The maximum number of emails to get.
  * @returns {Promise<any>} The emails.
  */
 const getMessages = (limit) => {
-  return cy
-    .request({
-      method: "GET",
-      url: mhApiUrl(`/v2/messages?limit=${encodeURIComponent(limit)}`),
-      auth: mhAuth,
-      log: false,
-    })
-    .then((response) => {
-      if (typeof response.body === "string") {
-        return JSON.parse(response.body);
-      } else {
-        return response.body;
-      }
-    })
-    .then((parsed) => parsed.items);
+  return getMailHogAuth().then((auth) => {
+    return cy
+      .request({
+        method: "GET",
+        url: mhApiUrl(`/v2/messages?limit=${encodeURIComponent(limit)}`),
+        auth: auth,
+        log: false,
+      })
+      .then((response) => {
+        if (typeof response.body === "string") {
+          return JSON.parse(response.body);
+        } else {
+          return response.body;
+        }
+      })
+      .then((parsed) => parsed.items);
+  });
 };
 
 /**
@@ -43,21 +59,25 @@ const getMessages = (limit) => {
  * @returns {Promise<any>} The emails.
  */
 const searchMessages = (kind, query, limit) => {
-  return cy
-    .request({
-      method: "GET",
-      url: mhApiUrl(`/v2/search?kind=${encodeURIComponent(kind)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`),
-      auth: mhAuth,
-      log: false,
-    })
-    .then((response) => {
-      if (typeof response.body === "string") {
-        return JSON.parse(response.body);
-      } else {
-        return response.body;
-      }
-    })
-    .then((parsed) => parsed.items);
+  return getMailHogAuth().then((auth) => {
+    return cy
+      .request({
+        method: "GET",
+        url: mhApiUrl(
+          `/v2/search?kind=${encodeURIComponent(kind)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
+        ),
+        auth: auth,
+        log: false,
+      })
+      .then((response) => {
+        if (typeof response.body === "string") {
+          return JSON.parse(response.body);
+        } else {
+          return response.body;
+        }
+      })
+      .then((parsed) => parsed.items);
+  });
 };
 
 /**
@@ -94,35 +114,41 @@ const retryFetchMessages = (fetcher, filter, limit, options = {}) => {
 };
 
 Cypress.Commands.add("mhGetJimMode", () => {
-  return cy
-    .request({
-      method: "GET",
-      url: mhApiUrl("/v2/jim"),
-      failOnStatusCode: false,
-      auth: mhAuth,
-    })
-    .then((response) => {
-      return cy.wrap(response.status === 200);
-    });
+  return getMailHogAuth().then((auth) => {
+    return cy
+      .request({
+        method: "GET",
+        url: mhApiUrl("/v2/jim"),
+        failOnStatusCode: false,
+        auth: auth,
+      })
+      .then((response) => {
+        return cy.wrap(response.status === 200);
+      });
+  });
 });
 
 Cypress.Commands.add("mhSetJimMode", (enabled) => {
-  return cy.request({
-    method: enabled ? "POST" : "DELETE",
-    url: mhApiUrl("/v2/jim"),
-    failOnStatusCode: false,
-    auth: mhAuth,
+  return getMailHogAuth().then((auth) => {
+    return cy.request({
+      method: enabled ? "POST" : "DELETE",
+      url: mhApiUrl("/v2/jim"),
+      failOnStatusCode: false,
+      auth: auth,
+    });
   });
 });
 
 /** Mail Collection */
 
 Cypress.Commands.add("mhDeleteAll", (options = {}) => {
-  return cy.request({
-    method: "DELETE",
-    url: mhApiUrl("/v1/messages"),
-    auth: mhAuth,
-    timeout: options.timeout || Cypress.config('responseTimeout') || 30000,
+  return getMailHogAuth().then((auth) => {
+    return cy.request({
+      method: "DELETE",
+      url: mhApiUrl("/v1/messages"),
+      auth: auth,
+      timeout: options.timeout || Cypress.config("responseTimeout") || 30000,
+    });
   });
 });
 
@@ -143,7 +169,7 @@ Cypress.Commands.add(
       mails.filter((mail) => mail.Content.Headers.Subject[0] === subject);
 
     return retryFetchMessages(getMessages, filter, limit, options);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -152,13 +178,13 @@ Cypress.Commands.add(
     const filter = (mails) => {
       return mails.filter((mail) =>
         mail.To.map(
-          (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`
-        ).includes(recipient)
+          (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`,
+        ).includes(recipient),
       );
     };
 
     return retryFetchMessages(getMessages, filter, limit, options);
-  }
+  },
 );
 
 Cypress.Commands.add("mhGetMailsBySender", (from, limit = 50, options = {}) => {
@@ -167,12 +193,14 @@ Cypress.Commands.add("mhGetMailsBySender", (from, limit = 50, options = {}) => {
   return retryFetchMessages(getMessages, filter, limit, options);
 });
 
-Cypress.Commands.add("mhSearchMails", (kind, query, limit = 50, options = {}) => {
-  const filter = (mails) => mails;
-  const fetcher = limit => searchMessages(kind, query, limit);
-  return retryFetchMessages(fetcher, filter, limit, options);
-});
-
+Cypress.Commands.add(
+  "mhSearchMails",
+  (kind, query, limit = 50, options = {}) => {
+    const filter = (mails) => mails;
+    const fetcher = (limit) => searchMessages(kind, query, limit);
+    return retryFetchMessages(fetcher, filter, limit, options);
+  },
+);
 
 /** Filters on Mail Collections */
 
@@ -181,9 +209,9 @@ Cypress.Commands.add(
   { prevSubject: true },
   (messages, subject) => {
     return messages.filter(
-      (mail) => mail.Content.Headers.Subject[0] === subject
+      (mail) => mail.Content.Headers.Subject[0] === subject,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -192,10 +220,10 @@ Cypress.Commands.add(
   (messages, recipient) => {
     return messages.filter((mail) =>
       mail.To.map(
-        (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`
-      ).includes(recipient)
+        (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`,
+      ).includes(recipient),
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -203,7 +231,7 @@ Cypress.Commands.add(
   { prevSubject: true },
   (messages, from) => {
     return messages.filter((mail) => mail.Raw.From === from);
-  }
+  },
 );
 
 /** Single Mail Commands and Assertions */
@@ -225,8 +253,8 @@ Cypress.Commands.add("mhGetRecipients", { prevSubject: true }, (mail) => {
     .wrap(mail)
     .then((mail) =>
       mail.To.map(
-        (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`
-      )
+        (recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`,
+      ),
     );
 });
 
@@ -272,7 +300,7 @@ Cypress.Commands.add("mhGetAttachments", { prevSubject: true }, (mail) => {
             .map((token) => token.trim());
           if (dispositionTokens.includes("attachment")) {
             const fileNameToken = dispositionTokens.find((token) =>
-              token.startsWith("filename=")
+              token.startsWith("filename="),
             );
             const fileName = fileNameToken.replace("filename=", "");
             attachments.push(fileName);
