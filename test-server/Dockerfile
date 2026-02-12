@@ -1,4 +1,4 @@
-FROM cypress/included:12.13.0
+FROM cypress/included:15.10.0
 
 ADD . /e2e
 WORKDIR /e2e/test-server

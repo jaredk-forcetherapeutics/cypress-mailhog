@@ -1,0 +1,26 @@
+# Node modules
+node_modules/
+
+# PHP vendor directory (installed at runtime)
+vendor/
+
+# Git files
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+cypress/screenshots/
+cypress/videos/
+
+# Logs
+*.log

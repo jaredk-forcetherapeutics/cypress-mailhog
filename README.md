@@ -331,25 +331,54 @@ Navigate into the `test-server` directory.
 cd ./test-server/
 ```
 
-Install dependencies.
+Install Node.js dependencies (for Cypress tests only).
 
 ```bash
-composer install
 yarn # or npm install
 ```
 
-Start docker server.
+**Note:** You do NOT need PHP or Composer installed on your host machine. PHP dependencies are installed automatically inside the Docker container.
+
+Start docker services.
 
 ```bash
 docker-compose up
 ```
 
-Open the test page in your browser: [http://localhost:3000/cypress-mh-tests/](http://localhost:3000/cypress-mh-tests/)
+**First-time startup:** The web container will automatically install PHP dependencies via Composer. This takes 15-30 seconds. Wait for the startup to complete.
 
-Open MailHog in your browser: [http://localhost:8090/](http://localhost:8090/)
+Verify services are accessible:
+
+- Test page: [http://localhost:3000/cypress-mh-tests/](http://localhost:3000/cypress-mh-tests/)
+- MailHog UI: [http://localhost:8090/](http://localhost:8090/)
+
+**Troubleshooting:** If services don't start or localhost:3000 refuses connection, see `test-server/README.md` for detailed troubleshooting steps.
 
 Open the Cypress testclient.
 
 ```bash
 yarn cypress:open
 ```
+
+### Development Helper Scripts
+
+The `test-server/` directory includes helper scripts for common tasks:
+
+```bash
+# Start services and verify health
+./dev.sh start
+
+# Check service status
+./dev.sh status
+
+# View logs
+./dev.sh logs
+
+# Access container shell
+./dev.sh shell
+
+# Run composer commands inside container
+./dev.sh composer update
+```
+
+See `test-server/README.md` for complete documentation and troubleshooting guide.
