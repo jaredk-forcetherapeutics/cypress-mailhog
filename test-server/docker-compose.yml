@@ -1,24 +1,42 @@
-version: '3'
 services:
+  # PHP 8.5-alpine Apache web server for serving test pages and handling email operations
   web:
-   image: webdevops/php-apache-dev:7.4
-   depends_on:
-     - mailhog
-   links:
-     - mailhog
-   volumes:
-     - ./:/var/www/html/cypress-mh-tests/
-   ports:
-     - "3000:80"
-   environment:
-     - PHP_DISPLAY_ERRORS=E_ALL
-     - WEB_DOCUMENT_ROOT=/var/www/html
-   privileged: true
-   devices:
-     - /dev/fuse:/dev/fuse
+    image: webdevops/php-apache-dev:8.5-alpine
+    depends_on:
+      - mailhog
+    links:
+      - mailhog
+    volumes:
+      - ./:/var/www/html/cypress-mh-tests/
+    ports:
+      - "3000:80" # Maps container port 80 to host port 3000
+    environment:
+      - PHP_DISPLAY_ERRORS=E_ALL
+      - WEB_DOCUMENT_ROOT=/var/www/html
+    # Install composer dependencies on startup, then start Apache via supervisord
+    command: >
+      sh -c "cd /var/www/html/cypress-mh-tests && 
+             composer install --no-interaction --optimize-autoloader && 
+             supervisord"
+    # Health check to verify Apache is serving the test page
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/cypress-mh-tests/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s # Allow time for composer install on first run
+    restart: unless-stopped
 
+  # MailHog SMTP server and web UI for email testing
   mailhog:
     image: mailhog/mailhog
     platform: linux/amd64
     ports:
-      - "8090:8025" 
+      - "8090:8025" # Maps MailHog web UI to host port 8090
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v2/messages"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
