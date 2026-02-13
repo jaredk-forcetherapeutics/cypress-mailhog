@@ -1,10 +1,15 @@
 services:
   cypress:
-    build:
-      context: ../
-      dockerfile: ./test-server/Dockerfile
-    depends_on: 
-      - web
-    environment: 
+    image: cypress/included:15.10.0
+    volumes:
+      - ../index.js:/e2e/index.js
+      - ./:/e2e/test-server
+    working_dir: /e2e/test-server
+    depends_on:
+      web:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+    environment:
       - CYPRESS_BASE_URL=http://web/cypress-mh-tests/
       - CYPRESS_mailHogUrl=http://mailhog:8025

@@ -33,4 +33,10 @@ services:
     platform: linux/amd64
     ports:
       - "8090:8025" # Maps MailHog web UI to host port 8090
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/api/v2/messages"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped

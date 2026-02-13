@@ -2,7 +2,7 @@ import { defineConfig } from 'cypress'
 
 export default defineConfig({
   allowCypressEnv: false,
-  expose: {
+  env: {
     mailHogUrl: 'http://localhost:8090',
   },
   e2e: {

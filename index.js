@@ -1,29 +1,61 @@
-const mhApiUrl = (path) => {
-  const envValue = Cypress.expose("mailHogUrl");
-  const basePath = envValue || Cypress.config("mailHogUrl");
-  return new URL(`api${path}`, basePath).href;
+/**
+ * Helper function to construct MailHog authentication configuration.
+ * 
+ * @param {Object|string} mailHogAuth - Pre-configured auth object with user/pass properties, or empty string for no auth.
+ * @param {string} mailHogUsername - Username for basic authentication (used if mailHogAuth is not provided).
+ * @param {string} mailHogPassword - Password for basic authentication (used if mailHogAuth is not provided).
+ * @returns {Object|string} Authentication configuration object with {user, pass} properties, or empty string for no auth.
+ * 
+ */
+const getAuth = (mailHogAuth, mailHogUsername, mailHogPassword) => {
+  if (mailHogAuth) {
+    return mailHogAuth
+  }
+  
+  if (mailHogUsername && mailHogPassword) {
+    return {
+      user: mailHogUsername,
+      pass: mailHogPassword,
+    }
+  }
+
+  return "";
 };
 
 /**
- * Helper function to retrieve MailHog authentication credentials.
- * Uses cy.env() to securely access environment variables.
- * @returns {Cypress.Chainable} A Cypress chain yielding the auth configuration.
+ * Makes an HTTP request to the MailHog API with automatic URL construction and authentication.
+ * 
+ * This helper function retrieves the MailHog base URL and authentication credentials from
+ * Cypress environment variables, constructs the full API URL, and executes the HTTP request
+ * with proper authentication.
+ * 
+ * @param {string} path - The API endpoint path (e.g., "/v2/messages" or "/v1/messages"). 
+ *                        Will be prefixed with "api" and combined with the mailHogUrl base URL.
+ * @param {Object} [options={}] - Additional options to pass to cy.request(). 
+ *                                 Common options include method, body, headers, timeout, failOnStatusCode, log, etc.
+ * @returns {Cypress.Chainable<Cypress.Response>} A Cypress chainable that yields the HTTP response object.
+ * 
+ * @requires Environment variable `mailHogUrl` - The base URL of the MailHog server (e.g., "http://localhost:8025")
+ * @requires Environment variable `mailHogAuth` (optional) - Pre-configured auth object with {user, pass}
+ * @requires Environment variable `mailHogUsername` (optional) - Username for basic authentication
+ * @requires Environment variable `mailHogPassword` (optional) - Password for basic authentication
+ * 
  */
-const getMailHogAuth = () => {
-  return cy
-    .env(["mailHogAuth", "mailHogUsername", "mailHogPassword"])
-    .then(({ mailHogAuth, mailHogUsername, mailHogPassword }) => {
-      if (mailHogAuth) {
-        return mailHogAuth;
-      }
-      if (mailHogUsername && mailHogPassword) {
-        return {
-          user: mailHogUsername,
-          pass: mailHogPassword,
-        };
-      }
-      return "";
+const mhRequest = (path, options = {}) => {
+  return cy.env([
+    'mailHogUrl', "mailHogAuth", "mailHogUsername", "mailHogPassword"
+  ]).then(({
+    mailHogUrl, mailHogAuth, mailHogUsername, mailHogPassword 
+  }) => {
+    const url = new URL(`api${path}`, mailHogUrl).href;
+    const auth = getAuth(mailHogAuth, mailHogUsername, mailHogPassword);
+
+    return cy.request({
+      url,
+      auth,
+      ...options,
     });
+  });
 };
 
 /**
@@ -32,23 +64,17 @@ const getMailHogAuth = () => {
  * @returns {Promise<any>} The emails.
  */
 const getMessages = (limit) => {
-  return getMailHogAuth().then((auth) => {
-    return cy
-      .request({
-        method: "GET",
-        url: mhApiUrl(`/v2/messages?limit=${encodeURIComponent(limit)}`),
-        auth: auth,
-        log: false,
-      })
-      .then((response) => {
-        if (typeof response.body === "string") {
-          return JSON.parse(response.body);
-        } else {
-          return response.body;
-        }
-      })
-      .then((parsed) => parsed.items);
-  });
+  return mhRequest(`/v2/messages?limit=${encodeURIComponent(limit)}`, {
+    method: "GET",
+    log: false,
+  }).then((response) => {
+    if (typeof response.body === "string") {
+      return JSON.parse(response.body);
+    } else {
+      return response.body;
+    }
+  })
+  .then((parsed) => parsed.items);
 };
 
 /**
@@ -59,25 +85,19 @@ const getMessages = (limit) => {
  * @returns {Promise<any>} The emails.
  */
 const searchMessages = (kind, query, limit) => {
-  return getMailHogAuth().then((auth) => {
-    return cy
-      .request({
-        method: "GET",
-        url: mhApiUrl(
-          `/v2/search?kind=${encodeURIComponent(kind)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`,
-        ),
-        auth: auth,
-        log: false,
-      })
-      .then((response) => {
-        if (typeof response.body === "string") {
-          return JSON.parse(response.body);
-        } else {
-          return response.body;
-        }
-      })
-      .then((parsed) => parsed.items);
-  });
+  const path = `/v2/search?kind=${encodeURIComponent(kind)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`;
+
+  return mhRequest(path, {
+    method: "GET",
+    log: false,
+  }).then((response) => {
+    if (typeof response.body === "string") {
+      return JSON.parse(response.body);
+    } else {
+      return response.body;
+    }
+  })
+  .then((parsed) => parsed.items);
 };
 
 /**
@@ -114,41 +134,28 @@ const retryFetchMessages = (fetcher, filter, limit, options = {}) => {
 };
 
 Cypress.Commands.add("mhGetJimMode", () => {
-  return getMailHogAuth().then((auth) => {
-    return cy
-      .request({
-        method: "GET",
-        url: mhApiUrl("/v2/jim"),
-        failOnStatusCode: false,
-        auth: auth,
-      })
-      .then((response) => {
-        return cy.wrap(response.status === 200);
-      });
-  });
+  return mhRequest("/v2/jim", {
+      method: "GET",
+      failOnStatusCode: false
+    })
+    .then((response) => {
+      return cy.wrap(response.status === 200);
+    });
 });
 
 Cypress.Commands.add("mhSetJimMode", (enabled) => {
-  return getMailHogAuth().then((auth) => {
-    return cy.request({
-      method: enabled ? "POST" : "DELETE",
-      url: mhApiUrl("/v2/jim"),
-      failOnStatusCode: false,
-      auth: auth,
-    });
+  return mhRequest("/v2/jim", {
+    method: enabled ? "POST" : "DELETE",
+    failOnStatusCode: false
   });
 });
 
 /** Mail Collection */
 
 Cypress.Commands.add("mhDeleteAll", (options = {}) => {
-  return getMailHogAuth().then((auth) => {
-    return cy.request({
-      method: "DELETE",
-      url: mhApiUrl("/v1/messages"),
-      auth: auth,
-      timeout: options.timeout || Cypress.config("responseTimeout") || 30000,
-    });
+  return mhRequest("/v1/messages", {
+    method: "DELETE",
+    timeout: options.timeout || Cypress.config("responseTimeout") || 30000,
   });
 });
 
