@@ -1,7 +1,7 @@
 services:
-  # PHP 7.4 + Apache web server for serving test pages and handling email operations
+  # PHP 8.5-alpine Apache web server for serving test pages and handling email operations
   web:
-    image: webdevops/php-apache-dev:7.4
+    image: webdevops/php-apache-dev:8.5-alpine
     depends_on:
       - mailhog
     links:
