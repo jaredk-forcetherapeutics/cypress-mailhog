@@ -31,7 +31,7 @@ Add the base url of your MailHog installation in the `e2e` block of your `cypres
 ```typescript
 export default defineConfig({
   projectId: "****",
-  expose: {
+  env: {
     mailHogUrl: "http://localhost:8090/",
   },
 });
