@@ -1,4 +1,5 @@
- /// <reference types="cypress" />
+/// <reference types="cypress" />
+
 /**
  * Helper function to construct MailHog authentication configuration.
  *
@@ -22,39 +23,6 @@ const getAuth = (mailHogAuth, mailHogUsername, mailHogPassword) => {
 
   return "";
 };
-
-/**
- * Makes an HTTP request to the MailHog API with automatic URL construction and authentication.
- *
- * This helper function retrieves the MailHog base URL and authentication credentials from
- * Cypress environment variables, constructs the full API URL, and executes the HTTP request
- * with proper authentication.
- * @param {string} path - The API endpoint path (e.g., "/v2/messages" or "/v1/messages").
- *                        Will be prefixed with "api" and combined with the mailHogUrl base URL.
- * @param {Partial<Cypress.RequestOptions>} options - Additional options to pass to cy.request().
- *                                 Common options include method, body, headers, timeout, failOnStatusCode, log, etc.
- * @returns {Cypress.Chainable<Cypress.Response>} A Cypress chainable that yields the HTTP response object.
- *
- * @requires Environment variable `mailHogUrl` - The base URL of the MailHog server (e.g., "http://localhost:8025")
- * @requires Environment variable `mailHogAuth` (optional) - Pre-configured auth object with {user, pass}
- * @requires Environment variable `mailHogUsername` (optional) - Username for basic authentication
- * @requires Environment variable `mailHogPassword` (optional) - Password for basic authentication
- *
- */
-Cypress.Commands.add("mhRequest", (path, options = {}) => {
-  return cy
-    .env(["mailHogUrl", "mailHogAuth", "mailHogUsername", "mailHogPassword"])
-    .then(({ mailHogUrl, mailHogAuth, mailHogUsername, mailHogPassword }) => {
-      const url = new URL(`api${path}`, mailHogUrl).href;
-      const auth = getAuth(mailHogAuth, mailHogUsername, mailHogPassword);
-
-      return cy.request({
-        url,
-        auth,
-        ...options,
-      });
-    });
-});
 
 /**
  * Gets unfiltered emails from mailhog.
@@ -103,37 +71,73 @@ const searchMessages = (kind, query, limit) => {
 };
 
 /**
- * Fetches messages from mailhog with retryability.
- * @param {(limit: number) => Promise<any>} fetcher The function to fetch the emails.
- * @param {(mails: any) => any} filter The filter to apply to the feteched emails.
- * @param {number} limit The maximum number of emails to fetch.
- * @param {{timeout?: number}} options The request options.
- * @returns {Promise<any>} The emails.
+ * Makes an HTTP request to the MailHog API with automatic URL construction and authentication.
+ *
+ * This helper function retrieves the MailHog base URL and authentication credentials from
+ * Cypress environment variables, constructs the full API URL, and executes the HTTP request
+ * with proper authentication.
+ * @param {string} path - The API endpoint path (e.g., "/v2/messages" or "/v1/messages").
+ *                        Will be prefixed with "api" and combined with the mailHogUrl base URL.
+ * @param {Partial<Cypress.RequestOptions>} options - Additional options to pass to cy.request().
+ *                                 Common options include method, body, headers, timeout, failOnStatusCode, log, etc.
+ * @returns {Cypress.Chainable<Cypress.Response>} A Cypress chainable that yields the HTTP response object.
+ *
+ * @requires Environment variable `mailHogUrl` - The base URL of the MailHog server (e.g., "http://localhost:8025")
+ * @requires Environment variable `mailHogAuth` (optional) - Pre-configured auth object with {user, pass}
+ * @requires Environment variable `mailHogUsername` (optional) - Username for basic authentication
+ * @requires Environment variable `mailHogPassword` (optional) - Password for basic authentication
+ *
  */
-const retryFetchMessages = (fetcher, filter, limit, options = {}) => {
-  const timeout =
-    options.timeout || Cypress.config("defaultCommandTimeout") || 4000;
-  let timedout = false;
+Cypress.Commands.add("mhRequest", (path, options = {}) => {
+  return cy
+    .env(["mailHogUrl", "mailHogAuth", "mailHogUsername", "mailHogPassword"])
+    .then(({ mailHogUrl, mailHogAuth, mailHogUsername, mailHogPassword }) => {
+      const url = new URL(`api${path}`, mailHogUrl).href;
+      const auth = getAuth(mailHogAuth, mailHogUsername, mailHogPassword);
 
-  setTimeout(() => {
-    timedout = true;
-  }, timeout);
-
-  const filteredMessages = (limit) => fetcher(limit).then(filter);
-
-  const resolve = () => {
-    if (timedout) {
-      return filteredMessages(limit);
-    }
-    return filteredMessages(limit).then((messages) => {
-      return cy.verifyUpcomingAssertions(messages, options, {
-        onRetry: resolve,
+      return cy.request({
+        url,
+        auth,
+        ...options,
       });
     });
-  };
+});
 
-  return resolve();
-};
+/**
+ * Fetches messages from MailHog with retryability.
+ * @param {(limit: number) => Cypress.Chainable<any[]>} fetcher - Function that returns a chainable yielding emails
+ * @param {(mails: any) => any} filter - The filter to apply to fetched emails
+ * @param {number} [limit=50] - Maximum number of emails to fetch
+ * @param {{timeout?: number}} [options={}] - Request options
+ * @returns {Cypress.Promise<any>} The filtered emails
+ */
+Cypress.Commands.add(
+  "mhRetryFetchMessages",
+  (fetcher, filter, limit = 50, options = {}) => {
+    const timeout =
+      options.timeout || Cypress.config("defaultCommandTimeout") || 4000;
+    let timedout = false;
+
+    setTimeout(() => {
+      timedout = true;
+    }, timeout);
+
+    const filteredMessages = (limit) => fetcher(limit).then(filter);
+
+    const resolve = () => {
+      if (timedout) {
+        return filteredMessages(limit);
+      }
+      return filteredMessages(limit).then((messages) => {
+        return cy.verifyUpcomingAssertions(messages, options, {
+          onRetry: resolve,
+        });
+      });
+    };
+
+    return resolve();
+  },
+);
 
 Cypress.Commands.add("mhGetJimMode", () => {
   return cy
@@ -165,7 +169,12 @@ Cypress.Commands.add("mhDeleteAll", (options = {}) => {
 Cypress.Commands.add("mhGetAllMails", (limit = 50, options = {}) => {
   const filter = (mails) => mails;
 
-  return retryFetchMessages(getMessages, filter, limit, options);
+  return cy.mhRetryFetchMessages(
+    (limit) => getMessages(limit),
+    filter,
+    limit,
+    options,
+  );
 });
 
 Cypress.Commands.add("mhFirst", { prevSubject: true }, (mails) => {
@@ -178,7 +187,12 @@ Cypress.Commands.add(
     const filter = (mails) =>
       mails.filter((mail) => mail.Content.Headers.Subject[0] === subject);
 
-    return retryFetchMessages(getMessages, filter, limit, options);
+    return cy.mhRetryFetchMessages(
+      (limit) => getMessages(limit),
+      filter,
+      limit,
+      options,
+    );
   },
 );
 
@@ -193,22 +207,36 @@ Cypress.Commands.add(
       );
     };
 
-    return retryFetchMessages(getMessages, filter, limit, options);
+    return cy.mhRetryFetchMessages(
+      (limit) => getMessages(limit),
+      filter,
+      limit,
+      options,
+    );
   },
 );
 
 Cypress.Commands.add("mhGetMailsBySender", (from, limit = 50, options = {}) => {
   const filter = (mails) => mails.filter((mail) => mail.Raw.From === from);
 
-  return retryFetchMessages(getMessages, filter, limit, options);
+  return cy.mhRetryFetchMessages(
+    (limit) => getMessages(limit),
+    filter,
+    limit,
+    options,
+  );
 });
 
 Cypress.Commands.add(
   "mhSearchMails",
   (kind, query, limit = 50, options = {}) => {
     const filter = (mails) => mails;
-    const fetcher = (limit) => searchMessages(kind, query, limit);
-    return retryFetchMessages(fetcher, filter, limit, options);
+    return cy.mhRetryFetchMessages(
+      (limit) => searchMessages(kind, query, limit),
+      filter,
+      limit,
+      options,
+    );
   },
 );
 

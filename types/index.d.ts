@@ -1,4 +1,4 @@
- /// <reference types="cypress" />
+/// <reference types="cypress" />
 declare namespace Cypress {
   interface EndToEndConfigOptions {
     mailHogUrl?: string;
@@ -8,6 +8,12 @@ declare namespace Cypress {
       path: string,
       options?: Partial<Cypress.RequestOptions>,
     ): Chainable<Cypress.Response<any>>;
+    mhRetryFetchMessages(
+      fetcher: (limit: number) => Chainable<mailhog.Item[]>,
+      filter: (mails: mailhog.Item[]) => mailhog.Item[],
+      limit?: number,
+      options?: { timeout?: number },
+    ): Chainable<mailhog.Item[]>;
     mhGetJimMode(): Chainable<boolean>;
     mhSetJimMode(enabled: boolean): Chainable<Cypress.Response<any>>;
     mhDeleteAll(
