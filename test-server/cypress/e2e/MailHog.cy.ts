@@ -79,17 +79,17 @@ describe("MailHog", () => {
     it("cy.mhSearchMails() - searches for mails sent TO recipient", () => {
       // Trigger bulk action second time to duplicate emails
       triggerAction("generate-bulk-unique");
-      cy.mhSearchMails("to", "recipient-1@").should("have.length", 2);
+      cy.mhWaitForMails(19).mhSearchMails("to", "recipient-1@").should("have.length", 2);
     });
     it("cy.mhSearchMails() - searches for mails sent FROM recipient", () => {
       // Trigger bulk action second time to duplicate emails
       triggerAction("generate-bulk-unique");
-      cy.mhSearchMails("from", "single-1@").should("have.length", 2);
+      cy.mhWaitForMails(19).mhSearchMails("from", "single-1@").should("have.length", 2);
     });
     it("cy.mhSearchMails() - searches for mails CONTAINING subject", () => {
       // Trigger bulk action second time to duplicate emails
       triggerAction("generate-bulk-unique");
-      cy.mhSearchMails("containing", "1/10").should("have.length", 2);
+      cy.mhWaitForMails(19).mhSearchMails("containing", "1/10").should("have.length", 2);
     });
   });
   describe("Handling a Single Mail ✉️", () => {
@@ -187,6 +187,17 @@ describe("MailHog", () => {
         .mhGetAllMails()
         .mhFilterBySender("single-10@example.com")
         .should("have.length", 1);
+    });
+    it("cy.mhRequest() - deletes a single message by its ID", () => {
+      cy.mhWaitForMails(9)
+        .mhSearchMails("from", "single-10@example.com")
+        .should("have.length", 1)
+        .then((messages) => {
+          messages.forEach(({ID}) => {
+            cy.mhRequest(`/v1/messages/${ID}`, { method: "DELETE" });
+          });
+        });
+      cy.mhSearchMails("from", "single-10@example.com").should("have.length", 0);
     });
   });
 });

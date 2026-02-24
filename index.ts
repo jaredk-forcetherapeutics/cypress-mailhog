@@ -301,8 +301,8 @@ Cypress.Commands.add("mhHasMailTo", (recipient) => {
 
 /** Helpers */
 
-Cypress.Commands.add("mhWaitForMails", (moreMailsThen = 0) => {
-  cy.mhGetAllMails().should("to.have.length.greaterThan", moreMailsThen);
+Cypress.Commands.add("mhWaitForMails", (moreMailsThan = 0) => {
+  cy.mhGetAllMails().should("to.have.length.greaterThan", moreMailsThan);
 });
 
 /** Attachments */

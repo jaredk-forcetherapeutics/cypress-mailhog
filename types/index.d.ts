@@ -83,7 +83,12 @@ declare namespace Cypress {
     mhHasMailWithSubject(subject: string): Chainable;
     mhHasMailFrom(from: string): Chainable;
     mhHasMailTo(recipient: string): Chainable;
-    mhWaitForMails(moreMailsThen?: number): Chainable;
+    /**
+     * Waits until there are emails in inbox.
+     * @param moreMailsThan - Defaults to 1.
+     * @returns {Chainable} The filtered emails
+    */
+    mhWaitForMails(moreMailsThan?: number): Chainable;
   }
 }
 
