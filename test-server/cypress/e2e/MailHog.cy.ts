@@ -34,7 +34,7 @@ describe("MailHog", () => {
         10
       );
     });
-    it("cy.mhDeleteAll() - delets all mails from MailCatcher", () => {
+    it("cy.mhDeleteAll() - deletes all mails from MailCatcher", () => {
       cy.mhWaitForMails(9)
         .mhDeleteAll()
         .mhGetAllMails()
@@ -75,6 +75,21 @@ describe("MailHog", () => {
         .get("@filteredMails")
         .mhFilterBySender("sender-1@example.com")
         .should("have.length", 0);
+    });
+    it("cy.mhSearchMails() - searches for mails sent TO recipient", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhSearchMails("to", "recipient-1@").should("have.length", 2);
+    });
+    it("cy.mhSearchMails() - searches for mails sent FROM recipient", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhSearchMails("from", "single-1@").should("have.length", 2);
+    });
+    it("cy.mhSearchMails() - searches for mails CONTAINING subject", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhSearchMails("containing", "1/10").should("have.length", 2);
     });
   });
   describe("Handling a Single Mail ✉️", () => {
