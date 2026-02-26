@@ -6,11 +6,13 @@
   "types": "types/index.d.ts",
   "files": [
     "dist",
-    "types"
+    "types",
+    "index.ts",
+    "tsconfig.json"
   ],
   "scripts": {
     "build": "tsc",
-    "postinstall": "npm run build",
+    "prepare": "npm run build",
     "prepublishOnly": "yarn build"
   },
   "repository": {
