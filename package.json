@@ -6,7 +6,9 @@
   "types": "types/index.d.ts",
   "files": [
     "dist",
-    "types"
+    "types",
+    "index.ts",
+    "tsconfig.json"
   ],
   "scripts": {
     "build": "tsc",
