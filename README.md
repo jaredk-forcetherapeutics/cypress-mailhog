@@ -351,7 +351,7 @@ cd ./test-server/
 Run all tests inside the `test-server` devcontainers.
 
 ```bash
-yarn test
+yarn cypress:ci
 ```
 
 Install Node.js dependencies (for Cypress tests only).

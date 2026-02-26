@@ -1,4 +1,7 @@
 services:
+  web:
+    environment:
+      - CYPRESS_mailHogUrl=http://mailhog:8025
   cypress:
     image: cypress/included:15.10.0
     volumes:
