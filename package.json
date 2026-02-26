@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "postinstall": "npm run build",
+    "prepare": "npm run build",
     "prepublishOnly": "yarn build"
   },
   "repository": {
