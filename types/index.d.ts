@@ -33,7 +33,6 @@ declare namespace Cypress {
      * @param filter - The filter to apply to fetched emails
      * @param limit - Maximum number of emails to fetch
      * @param options - Request options
-     * @returns {Cypress.Promise<any>} The filtered emails
     */
     mhRetryFetchMessages(
       fetcher: (limit: number) => Chainable<mailhog.Item[]>,
@@ -80,15 +79,19 @@ declare namespace Cypress {
     mhGetSender(): Chainable<string>;
     mhGetRecipients(): Chainable<string[]>;
     mhGetAttachments(): Chainable<string[]>;
-    mhHasMailWithSubject(subject: string): Chainable;
-    mhHasMailFrom(from: string): Chainable;
-    mhHasMailTo(recipient: string): Chainable;
+    mhHasMailWithSubject(subject: string): Chainable<mailhog.Item[]>;
+    mhHasMailFrom(from: string): Chainable<mailhog.Item[]>;
+    mhHasMailTo(recipient: string): Chainable<mailhog.Item[]>;
+    /**
+     * Parses embedded hyperlink from an html body text and visits href
+     * @param linkText text for related link
+     */
+    mhVisitLinkUrl(linkText: string): Chainable<AUTWindow>;
     /**
      * Waits until there are emails in inbox.
-     * @param moreMailsThan - Defaults to 1.
-     * @returns {Chainable} The filtered emails
+     * @param count - Minimum number of emails expected. Defaults to 1.
     */
-    mhWaitForMails(moreMailsThan?: number): Chainable;
+    mhWaitForMails(count?: number): Chainable<mailhog.Item[]>;
   }
 }
 

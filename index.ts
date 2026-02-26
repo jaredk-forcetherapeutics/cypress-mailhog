@@ -301,9 +301,16 @@ Cypress.Commands.add("mhHasMailTo", (recipient) => {
 
 /** Helpers */
 
-Cypress.Commands.add("mhWaitForMails", (moreMailsThan = 0) => {
-  cy.mhGetAllMails().should("to.have.length.greaterThan", moreMailsThan);
+Cypress.Commands.add("mhWaitForMails", (count = 1) => {
+  cy.mhGetAllMails().should("have.length.at.least", count);
 });
+
+Cypress.Commands.add("mhVisitLinkUrl", { prevSubject: true }, (bodyText, linkText) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(bodyText, "text/html");
+  const link = Array.from(doc.querySelectorAll("a")).find((a) => a.textContent.trim() === linkText);
+  return cy.visit(link.href);
+})
 
 /** Attachments */
 
