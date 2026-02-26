@@ -338,7 +338,7 @@ yarn build
 
 The compiled output is stored in `dist/`.
 
-**Important:** When publishing to npm, the `prepublishOnly` script runs automatically and builds the package. However, for local development or testing, you must run `yarn build` first.
+**Note:** When publishing to npm, the `prepublishOnly` script runs automatically and builds the package. When installing directly from git, the `postinstall` script compiles TypeScript automatically.
 
 ### Start Local Test Server
 
