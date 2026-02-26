@@ -1,8 +1,11 @@
 services:
+  web:
+    environment:
+      - CYPRESS_mailHogUrl=http://mailhog:8025
   cypress:
     image: cypress/included:15.10.0
     volumes:
-      - ../index.js:/e2e/index.js
+      - ../dist/index.js:/e2e/index.js
       - ./:/e2e/test-server
     working_dir: /e2e/test-server
     depends_on:

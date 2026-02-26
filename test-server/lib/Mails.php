@@ -53,6 +53,15 @@ class Mails
     $mail->send();
   }
 
+  public function sendSingleWithHyperlink()
+  {
+    $mail = $this->createMail();
+    $mail->Subject = 'Mail with Hyperlink';
+    $hyperlinkUrl = getenv('CYPRESS_mailHogUrl') ?: 'http://localhost:8090';
+    $mail->Body = "<a href=\"{$hyperlinkUrl}\">Open Mailhog Inbox</a> In this email";
+    $mail->send();
+  }
+
   public function sendSingleWithAttachment()
   {
     $mail = $this->createMail();

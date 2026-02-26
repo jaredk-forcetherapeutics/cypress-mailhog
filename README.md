@@ -327,12 +327,31 @@ cy
 
 ## Package Development
 
+### Building the Package
+
+This package is written in TypeScript and must be compiled before use.
+
+```bash
+# Compile TypeScript to JavaScript
+yarn build
+```
+
+The compiled output is stored in `dist/`.
+
+**Important:** When publishing to npm, the `prepublishOnly` script runs automatically and builds the package. However, for local development or testing, you must run `yarn build` first.
+
 ### Start Local Test Server
 
 Navigate into the `test-server` directory.
 
 ```bash
 cd ./test-server/
+```
+
+Run all tests inside the `test-server` devcontainers.
+
+```bash
+yarn cypress:ci
 ```
 
 Install Node.js dependencies (for Cypress tests only).
@@ -371,6 +390,9 @@ The `test-server/` directory includes helper scripts for common tasks:
 ```bash
 # Start services and verify health
 ./dev.sh start
+
+# Start services, verify health, and remove orphaned containers
+./dev.sh start --remove-orphans
 
 # Check service status
 ./dev.sh status

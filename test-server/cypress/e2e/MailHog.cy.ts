@@ -6,9 +6,7 @@ const simulatedTransportDelay = 250;
 
 describe("MailHog", () => {
   beforeEach(() => {
-    cy.visit("/")
-      .mhDeleteAll()
-      .mhSetJimMode(false);
+    cy.visit("/").mhDeleteAll().mhSetJimMode(false);
   });
   it("loads the page", () => {
     cy.get(".status-wrapper").should("be.visible");
@@ -31,11 +29,11 @@ describe("MailHog", () => {
     it("cy.mhGetMailsByRecipient(recipient) - returns array of mails by recipient", () => {
       cy.mhGetMailsByRecipient("recipient@example.com").should(
         "have.length",
-        10
+        10,
       );
     });
-    it("cy.mhDeleteAll() - delets all mails from MailCatcher", () => {
-      cy.mhWaitForMails(9)
+    it("cy.mhDeleteAll() - deletes all mails from MailCatcher", () => {
+      cy.mhWaitForMails(10)
         .mhDeleteAll()
         .mhGetAllMails()
         .should("have.length", 0);
@@ -48,26 +46,22 @@ describe("MailHog", () => {
       triggerAction("generate-bulk-unique");
     });
     it("cy.mhFilterBySubject(subject) - returns array of mails filtered by subject", () => {
-      cy.wait(1000)
-        .mhGetAllMails()
+      cy.mhWaitForMails(10)
         .mhFilterBySubject("Unique Mail 4/10")
         .should("have.length", 1);
     });
     it("cy.mhGetMailsBySender(sender) - returns array of mails filtered by sender", () => {
-      cy.wait(1000)
-        .mhGetAllMails()
+      cy.mhWaitForMails(10)
         .mhFilterBySender("single-4@example.com")
         .should("have.length", 1);
     });
     it("cy.mhGetMailsByRecipient(recipient) - returns array of mails filtered by recipient", () => {
-      cy.wait(1000)
-        .mhGetAllMails()
+      cy.mhWaitForMails(10)
         .mhFilterByRecipient("recipient-4@example.com")
         .should("have.length", 1);
     });
     it("allows to chain filters together", () => {
-      cy.wait(1000)
-        .mhGetAllMails()
+      cy.mhWaitForMails(10)
         .mhFilterByRecipient("bcc-recipient@example.com")
         .mhFilterBySubject("Unique Mail 4/10")
         .as("filteredMails")
@@ -75,6 +69,27 @@ describe("MailHog", () => {
         .get("@filteredMails")
         .mhFilterBySender("sender-1@example.com")
         .should("have.length", 0);
+    });
+    it("cy.mhSearchMails() - searches for mails sent TO recipient", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhWaitForMails(20)
+        .mhSearchMails("to", "recipient-1@")
+        .should("have.length", 2);
+    });
+    it("cy.mhSearchMails() - searches for mails sent FROM recipient", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhWaitForMails(20)
+        .mhSearchMails("from", "single-1@")
+        .should("have.length", 2);
+    });
+    it("cy.mhSearchMails() - searches for mails CONTAINING subject", () => {
+      // Trigger bulk action second time to duplicate emails
+      triggerAction("generate-bulk-unique");
+      cy.mhWaitForMails(20)
+        .mhSearchMails("containing", "1/10")
+        .should("have.length", 2);
     });
   });
   describe("Handling a Single Mail ✉️", () => {
@@ -119,11 +134,29 @@ describe("MailHog", () => {
       });
       it("mail.mhGetAttachments() - returns list of attachments for current mail", () => {
         cy.mhWaitForMails()
-          .mhGetAllMails()
           .mhFirst()
           .mhGetAttachments()
           .should("have.length", 2)
           .should("include", "sample.pdf");
+      });
+    });
+    describe("Hyperlink Handling", () => {
+      beforeEach(() => {
+        cy.wait(simulatedTransportDelay); // make sure to wait for delayed messages before cleaning up
+        cy.mhDeleteAll();
+        triggerAction("generate-single-with-hyperlink");
+      });
+      it("cy.mhVisitLinkUrl() - visits embedded hyperlink in email", () => {
+        cy.mhWaitForMails()
+          .mhFirst()
+          .mhGetBody()
+          .mhVisitLinkUrl("Open Mailhog Inbox");
+        cy.env(["mailHogUrl"]).then(({mailHogUrl}) => {
+          cy.url().should("eq", `${mailHogUrl}/`);
+          cy.origin(mailHogUrl, () => {
+            cy.get(".navbar-brand").should("contain", "MailHog");
+          });
+        });
       });
     });
   });
@@ -146,19 +179,13 @@ describe("MailHog", () => {
   });
   describe("Jim Chaos Monkey 🐵", () => {
     it("cy.mhGetJimMode() - returns if jim mode is enabled", () => {
-      cy.mhSetJimMode(true)
-        .mhGetJimMode()
-        .should("eq", true);
+      cy.mhSetJimMode(true).mhGetJimMode().should("eq", true);
     });
     it("cy.mhSetJimMode(true) - enables jim mode", () => {
-      cy.mhSetJimMode(true)
-        .mhGetJimMode()
-        .should("eq", true);
+      cy.mhSetJimMode(true).mhGetJimMode().should("eq", true);
     });
     it("cy.mhSetJimMode(false) - disables jim mode", () => {
-      cy.mhSetJimMode(false)
-        .mhGetJimMode()
-        .should("eq", false);
+      cy.mhSetJimMode(false).mhGetJimMode().should("eq", false);
     });
   });
   describe("General Helper Functions", () => {
@@ -167,11 +194,24 @@ describe("MailHog", () => {
       cy.mhDeleteAll();
       triggerAction("generate-bulk-unique");
     });
-    it("cy.mhWaitForMails(moreMailsThen) - waits for a certain nr of mails to be on server", () => {
-      cy.mhWaitForMails(9)
-        .mhGetAllMails()
+    it("cy.mhWaitForMails() - waits for a minimum number of mails to be on server", () => {
+      cy.mhWaitForMails(10)
         .mhFilterBySender("single-10@example.com")
         .should("have.length", 1);
+    });
+    it("cy.mhRequest() - deletes a single message by its ID", () => {
+      cy.mhWaitForMails(10)
+        .mhSearchMails("from", "single-10@example.com")
+        .should("have.length", 1)
+        .then((messages) => {
+          messages.forEach(({ ID }) => {
+            cy.mhRequest(`/v1/messages/${ID}`, { method: "DELETE" });
+          });
+        });
+      cy.mhSearchMails("from", "single-10@example.com").should(
+        "have.length",
+        0,
+      );
     });
   });
 });

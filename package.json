@@ -2,10 +2,15 @@
   "name": "cypress-mailhog",
   "version": "2.5.0",
   "description": "Cypress Commands for MailHog 🌳🐗",
-  "main": "index.js",
+  "main": "dist/index.js",
   "types": "types/index.d.ts",
+  "files": [
+    "dist",
+    "types"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "prepublishOnly": "yarn build"
   },
   "repository": {
     "type": "git",

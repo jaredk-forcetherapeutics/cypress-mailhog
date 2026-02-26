@@ -6,7 +6,7 @@ This test server runs entirely in Docker containers. **You do NOT need PHP or Co
 
 ## Architecture
 
-- **Web Service:** PHP 7.4 + Apache (serves test pages and handles email sending)
+- **Web Service:** PHP 8.5 + Apache (serves test pages and handles email sending)
 - **MailHog:** SMTP server + web UI for email testing
 
 ## Prerequisites
@@ -298,19 +298,18 @@ sudo chown -R $USER:$USER vendor/
 
 ```
 test-server/
-├── docker-compose.yml          # Service definitions
-├── docker-compose.cypress.yml  # Cypress service config (for CI)
-├── Dockerfile                  # Cypress test runner (for CI)
-├── README.md                   # This file
-├── dev.sh                      # Development helper script
-├── verify-services.sh          # Service health check script
-├── index.html                  # Test page UI
-├── mailer.php                  # Email sending endpoint
-├── composer.json               # PHP dependencies
-├── composer.lock               # PHP dependency lockfile
-├── lib/Mails.php              # Email generation logic
-├── cypress/                    # Cypress test specs
-└── vendor/                     # PHP dependencies (created at runtime)
+├── docker-compose.yml           # Base service definitions (web + mailhog)
+├── docker-compose.ci.yml        # CI override (adds cypress service)
+├── README.md                    # This file
+├── dev.sh                       # Development helper script
+├── verify-services.sh           # Service health check script
+├── index.html                   # Test page UI
+├── mailer.php                   # Email sending endpoint
+├── composer.json                # PHP dependencies
+├── composer.lock                # PHP dependency lockfile
+├── lib/Mails.php                # Email generation logic
+├── cypress/                     # Cypress test specs
+└── vendor/                      # PHP dependencies (created at runtime)
 ```
 
 ### Volume Mounts
@@ -440,16 +439,22 @@ yarn cypress:run --spec "cypress/e2e/your-test.cy.js"
 
 ## Continuous Integration
 
-The `docker-compose.cypress.yml` file defines a Cypress service that:
+The `docker-compose.ci.yml` file defines a Cypress service that:
 
-- Builds from the `Dockerfile` in this directory
+- Builds from the Cypress included image
 - Runs Cypress tests in headless mode
 - Connects to the web and mailhog services
 
 To run the full test suite in CI mode:
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.cypress.yml up --exit-code-from cypress
+docker-compose -f docker-compose.yml -f docker-compose.ci.yml up --build --exit-code-from cypress
+```
+
+Or use the test script:
+
+```bash
+yarn cypress:ci
 ```
 
 ## Additional Resources

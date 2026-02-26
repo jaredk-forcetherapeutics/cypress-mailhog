@@ -11,6 +11,9 @@ if ($_POST['action']) {
     case 'generate-single-with-attachment':
       $mailer->sendSingleWithAttachment();
       break;
+    case 'generate-single-with-hyperlink':
+      $mailer->sendSingleWithHyperlink();
+      break;
     case 'generate-bulk':
       $mailer->sendBulk();
       break;
