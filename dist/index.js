@@ -1,0 +1,214 @@
+/// <reference types="cypress" />
+/// <reference path="./types/index.d.ts" />
+const getAuth = (mailHogAuth, mailHogUsername, mailHogPassword) => {
+    if (mailHogAuth) {
+        return mailHogAuth;
+    }
+    if (mailHogUsername && mailHogPassword) {
+        return {
+            user: mailHogUsername,
+            pass: mailHogPassword,
+        };
+    }
+    return "";
+};
+/**
+ * Gets unfiltered emails from mailhog.
+ * @param {number} limit The maximum number of emails to get.
+ * @returns {Cypress.Chainable<any[]>} The emails.
+ */
+const getMessages = (limit) => {
+    return cy
+        .mhRequest(`/v2/messages?limit=${encodeURIComponent(limit)}`, {
+        method: "GET",
+        log: false,
+    })
+        .then((response) => {
+        if (typeof response.body === "string") {
+            return JSON.parse(response.body);
+        }
+        else {
+            return response.body;
+        }
+    })
+        .then((parsed) => parsed.items);
+};
+/**
+ * Gets emails on mailhog that match the specified search query.
+ * @param {'from' | 'to' | 'containing'} kind The search kind.
+ * @param {string} query The search query.
+ * @param {number} limit The maximum number of emails to get.
+ * @returns {Cypress.Chainable<any[]>} The emails.
+ */
+const searchMessages = (kind, query, limit) => {
+    const path = `/v2/search?kind=${encodeURIComponent(kind)}&query=${encodeURIComponent(query)}&limit=${encodeURIComponent(limit)}`;
+    return cy
+        .mhRequest(path, {
+        method: "GET",
+        log: false,
+    })
+        .then((response) => {
+        if (typeof response.body === "string") {
+            return JSON.parse(response.body);
+        }
+        else {
+            return response.body;
+        }
+    })
+        .then((parsed) => parsed.items);
+};
+Cypress.Commands.add("mhRequest", (path, options = {}) => {
+    return cy
+        .env(["mailHogUrl", "mailHogAuth", "mailHogUsername", "mailHogPassword"])
+        .then(({ mailHogUrl, mailHogAuth, mailHogUsername, mailHogPassword }) => {
+        const url = new URL(`api${path}`, mailHogUrl).href;
+        const auth = getAuth(mailHogAuth, mailHogUsername, mailHogPassword);
+        return cy.request({
+            url,
+            auth: auth,
+            ...options,
+        });
+    });
+});
+Cypress.Commands.add("mhRetryFetchMessages", (fetcher, filter, limit = 50, options = {}) => {
+    const timeout = options.timeout || Cypress.config("defaultCommandTimeout") || 4000;
+    let timedout = false;
+    setTimeout(() => {
+        timedout = true;
+    }, timeout);
+    const filteredMessages = (limit) => fetcher(limit).then(filter);
+    const resolve = () => {
+        if (timedout) {
+            return filteredMessages(limit);
+        }
+        return filteredMessages(limit).then((messages) => {
+            return cy.verifyUpcomingAssertions(messages, options, {
+                onRetry: resolve,
+            });
+        });
+    };
+    return resolve();
+});
+Cypress.Commands.add("mhGetJimMode", () => {
+    return cy
+        .mhRequest("/v2/jim", {
+        method: "GET",
+        failOnStatusCode: false,
+    })
+        .then((response) => {
+        return cy.wrap(response.status === 200);
+    });
+});
+Cypress.Commands.add("mhSetJimMode", (enabled) => {
+    return cy.mhRequest("/v2/jim", {
+        method: enabled ? "POST" : "DELETE",
+        failOnStatusCode: false,
+    });
+});
+/** Mail Collection */
+Cypress.Commands.add("mhDeleteAll", (options = {}) => {
+    return cy.mhRequest("/v1/messages", {
+        method: "DELETE",
+        timeout: options.timeout || Cypress.config("responseTimeout") || 30000,
+    });
+});
+Cypress.Commands.add("mhGetAllMails", (limit = 50, options = {}) => {
+    const filter = (mails) => mails;
+    return cy.mhRetryFetchMessages((limit) => getMessages(limit), filter, limit, options);
+});
+Cypress.Commands.add("mhFirst", { prevSubject: true }, (mails) => {
+    return Array.isArray(mails) && mails.length > 0 ? mails[0] : mails;
+});
+Cypress.Commands.add("mhGetMailsBySubject", (subject, limit = 50, options = {}) => {
+    const filter = (mails) => mails.filter((mail) => mail.Content.Headers.Subject[0] === subject);
+    return cy.mhRetryFetchMessages((limit) => getMessages(limit), filter, limit, options);
+});
+Cypress.Commands.add("mhGetMailsByRecipient", (recipient, limit = 50, options = {}) => {
+    const filter = (mails) => {
+        return mails.filter((mail) => mail.To.map((recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`).includes(recipient));
+    };
+    return cy.mhRetryFetchMessages((limit) => getMessages(limit), filter, limit, options);
+});
+Cypress.Commands.add("mhGetMailsBySender", (from, limit = 50, options = {}) => {
+    const filter = (mails) => mails.filter((mail) => mail.Raw.From === from);
+    return cy.mhRetryFetchMessages((limit) => getMessages(limit), filter, limit, options);
+});
+Cypress.Commands.add("mhSearchMails", (kind, query, limit = 50, options = {}) => {
+    const filter = (mails) => mails;
+    return cy.mhRetryFetchMessages((limit) => searchMessages(kind, query, limit), filter, limit, options);
+});
+/** Filters on Mail Collections */
+Cypress.Commands.add("mhFilterBySubject", { prevSubject: true }, (messages, subject) => {
+    return messages.filter((mail) => mail.Content.Headers.Subject[0] === subject);
+});
+Cypress.Commands.add("mhFilterByRecipient", { prevSubject: true }, (messages, recipient) => {
+    return messages.filter((mail) => mail.To.map((recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`).includes(recipient));
+});
+Cypress.Commands.add("mhFilterBySender", { prevSubject: true }, (messages, from) => {
+    return messages.filter((mail) => mail.Raw.From === from);
+});
+/** Single Mail Commands and Assertions */
+Cypress.Commands.add("mhGetSubject", { prevSubject: true }, (mail) => {
+    return cy
+        .wrap(mail.Content.Headers)
+        .then((headers) => headers.Subject[0]);
+});
+Cypress.Commands.add("mhGetBody", { prevSubject: true }, (mail) => {
+    return cy.wrap(mail.Content).its("Body");
+});
+Cypress.Commands.add("mhGetSender", { prevSubject: true }, (mail) => {
+    return cy.wrap(mail.Raw).its("From");
+});
+Cypress.Commands.add("mhGetRecipients", { prevSubject: true }, (mail) => {
+    return cy
+        .wrap(mail)
+        .then((mail) => mail.To.map((recipientObj) => `${recipientObj.Mailbox}@${recipientObj.Domain}`));
+});
+/** Mail Collection Assertions */
+Cypress.Commands.add("mhHasMailWithSubject", (subject) => {
+    cy.mhGetMailsBySubject(subject).should("not.have.length", 0);
+});
+Cypress.Commands.add("mhHasMailFrom", (from) => {
+    cy.mhGetMailsBySender(from).should("not.have.length", 0);
+});
+Cypress.Commands.add("mhHasMailTo", (recipient) => {
+    cy.mhGetMailsByRecipient(recipient).should("not.have.length", 0);
+});
+/** Helpers */
+Cypress.Commands.add("mhWaitForMails", (count = 1) => {
+    cy.mhGetAllMails().should("have.length.at.least", count);
+});
+Cypress.Commands.add("mhVisitLinkUrl", { prevSubject: true }, (bodyText, linkText) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(bodyText, "text/html");
+    const link = Array.from(doc.querySelectorAll("a")).find((a) => a.textContent.trim() === linkText);
+    return cy.visit(link.href);
+});
+/** Attachments */
+Cypress.Commands.add("mhGetAttachments", { prevSubject: true }, (mail) => {
+    const attachments = [];
+    // search through mime parts to find attachments
+    if (Array.isArray(mail.MIME?.Parts)) {
+        for (const mimePart of mail.MIME?.Parts) {
+            // content disposition tells us if this part represents an attachment
+            // sample: Content-Disposition: ["attachment; filename=sample.pdf"]
+            if (mimePart.Headers &&
+                mimePart.Headers["Content-Disposition"] &&
+                mimePart.Headers["Content-Disposition"][0]) {
+                const contentDisposition = mimePart.Headers["Content-Disposition"][0];
+                if (contentDisposition) {
+                    const dispositionTokens = contentDisposition
+                        .split(";")
+                        .map((token) => token.trim());
+                    if (dispositionTokens.includes("attachment")) {
+                        const fileNameToken = dispositionTokens.find((token) => token.startsWith("filename="));
+                        const fileName = fileNameToken.replace("filename=", "");
+                        attachments.push(fileName);
+                    }
+                }
+            }
+        }
+    }
+    return cy.wrap(attachments);
+});
+export {};

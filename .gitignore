@@ -65,6 +65,3 @@ typings/
 
 # dotenv environment variables file
 .env
-
-# Compiled TypeScript output
-dist/

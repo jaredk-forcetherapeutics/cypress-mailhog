@@ -329,7 +329,7 @@ cy
 
 ### Building the Package
 
-This package is written in TypeScript and must be compiled before use.
+This package is written in TypeScript. The compiled `dist/` directory is committed to the repository.
 
 ```bash
 # Compile TypeScript to JavaScript
@@ -338,7 +338,7 @@ yarn build
 
 The compiled output is stored in `dist/`.
 
-**Note:** When publishing to npm, the `prepublishOnly` script runs automatically and builds the package. When installing directly from git, the `postinstall` script compiles TypeScript automatically.
+**Note:** When publishing to npm, the `prepublishOnly` script runs automatically and builds the package. The compiled `dist/` directory is committed to the repository, so installing from git works without any build step.
 
 ### Start Local Test Server
 
