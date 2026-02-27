@@ -3,14 +3,18 @@
   "version": "2.5.0",
   "description": "Cypress Commands for MailHog 🌳🐗",
   "main": "dist/index.js",
-  "types": "types/index.d.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist",
-    "types"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "postinstall": "npm run build",
+    "build": "rm -rf dist && tsc && node scripts/build.js",
     "prepublishOnly": "yarn build"
   },
   "repository": {
@@ -29,13 +33,11 @@
     "url": "https://github.com/SMenigat/cypress-mailhog/issues"
   },
   "homepage": "https://github.com/SMenigat/cypress-mailhog#readme",
-  "dependencies": {
-    "typescript": "^5.9.3"
-  },
   "devDependencies": {
     "cypress": "15.10.0",
     "eslint": "^10.0.0",
     "eslint-config-google": "^0.14.0",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
   }
 }
