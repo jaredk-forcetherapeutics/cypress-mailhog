@@ -1,5 +1,4 @@
 /// <reference types="cypress" />
-/// <reference path="./types/index.d.ts" />
 const getAuth = (mailHogAuth, mailHogUsername, mailHogPassword) => {
     if (mailHogAuth) {
         return mailHogAuth;
